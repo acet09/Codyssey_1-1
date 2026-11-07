@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>영화 티어리스트</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", sans-serif;
+    background: #f4f1ec;
+    color: #1f1d1a;
+  }
+  main {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 28px 24px 40px;
+  }
+  h1 {
+    margin: 0 0 4px;
+    font-size: 26px;
+    letter-spacing: -0.02em;
+  }
+  .guide {
+    margin: 0 0 20px;
+    color: #6b665e;
+    font-size: 14px;
+  }
+
+  .board {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .row {
+    display: grid;
+    grid-template-columns: 130px 1fr;
+    background: #fff;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.06);
+    min-height: 92px;
+  }
+  .row-label {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 17px;
+    padding: 10px;
+    text-align: center;
+  }
+  .row[data-tier="life"] .row-label { background: #f2c94c; color: #3d2f00; }
+  .row[data-tier="good"] .row-label { background: #a8d5ba; color: #133a22; }
+  .row[data-tier="bad"]  .row-label { background: #c9c4bc; color: #2e2b27; }
+  .row[data-tier="none"] { background: transparent; box-shadow: none; border: 2px dashed #cfc9bf; margin-bottom: 8px; }
+  .row[data-tier="none"] .row-label { color: #6b665e; font-size: 15px; }
+
+  .cards {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    padding: 12px;
+    align-content: center;
+    align-items: center;
+  }
+  .empty {
+    color: #a39d93;
+    font-size: 13px;
+  }
+
+  .card {
+    width: 132px;
+    min-height: 68px;
+    padding: 10px 12px;
+    border: none;
+    border-radius: 10px;
+    color: #fff;
+    text-align: left;
+    cursor: pointer;
+    font: inherit;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    gap: 6px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.15);
+    transition: transform 0.1s, box-shadow 0.1s;
+  }
+  .card:hover { transform: translateY(-2px); box-shadow: 0 4px 10px rgba(0,0,0,0.18); }
+  .card:focus-visible { outline: 3px solid #1f1d1a; outline-offset: 2px; }
+  .card.selected { outline: 3px solid #1f1d1a; outline-offset: 2px; }
+  .card-title { font-weight: 700; font-size: 14px; line-height: 1.3; word-break: keep-all; }
+  .card-genre {
+    font-size: 11px;
+    background: rgba(255,255,255,0.22);
+    padding: 2px 7px;
+    border-radius: 999px;
+    align-self: flex-start;
+  }
+
+  .g-thriller  { background: #4a5568; }
+  .g-sf        { background: #2563eb; }
+  .g-musical   { background: #9333ea; }
+  .g-animation { background: #15803d; }
+  .g-action    { background: #ea580c; }
+  .g-romance   { background: #e11d48; }
+
+  .menu {
+    position: absolute;
+    z-index: 10;
+    background: #fff;
+    border-radius: 10px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.18);
+    padding: 8px;
+    display: none;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 150px;
+  }
+  .menu.open { display: flex; }
+  .menu-title {
+    font-size: 12px;
+    color: #6b665e;
+    padding: 2px 6px 6px;
+  }
+  .menu button {
+    border: none;
+    background: #f4f1ec;
+    border-radius: 7px;
+    padding: 8px 10px;
+    font: inherit;
+    font-size: 14px;
+    text-align: left;
+    cursor: pointer;
+  }
+  .menu button:hover:not(:disabled) { background: #e8e3da; }
+  .menu button:disabled { color: #b3ada3; cursor: default; }
+  .menu .undo { margin-top: 4px; background: #fff; border: 1px solid #ddd6cb; }
+</style>
+</head>
+<body>
+<main>
+  <h1>영화 티어리스트</h1>
+  <p class="guide">영화 카드를 누른 뒤 등급을 고르세요.</p>
+
+  <div class="board" id="board">
+    <section class="row" data-tier="none">
+      <div class="row-label">아직 안 나눔</div>
+      <div class="cards"></div>
+    </section>
+    <section class="row" data-tier="life">
+      <div class="row-label">인생영화</div>
+      <div class="cards"></div>
+    </section>
+    <section class="row" data-tier="good">
+      <div class="row-label">볼 만함</div>
+      <div class="cards"></div>
+    </section>
+    <section class="row" data-tier="bad">
+      <div class="row-label">비추</div>
+      <div class="cards"></div>
+    </section>
+  </div>
+</main>
+
+<div class="menu" id="menu" role="menu">
+  <div class="menu-title" id="menuTitle"></div>
+  <button data-move="life" role="menuitem">인생영화</button>
+  <button data-move="good" role="menuitem">볼 만함</button>
+  <button data-move="bad" role="menuitem">비추</button>
+  <button data-move="none" class="undo" role="menuitem">되돌리기</button>
+</div>
+
+<script>
+  const GENRE_CLASS = {
+    "스릴러": "g-thriller",
+    "SF": "g-sf",
+    "뮤지컬": "g-musical",
+    "애니메이션": "g-animation",
+    "액션": "g-action",
+    "로맨스": "g-romance"
+  };
+
+  const movies = [
+    { id: 1, title: "기생충", genre: "스릴러" },
+    { id: 2, title: "인터스텔라", genre: "SF" },
+    { id: 3, title: "라라랜드", genre: "뮤지컬" },
+    { id: 4, title: "센과 치히로의 행방불명", genre: "애니메이션" },
+    { id: 5, title: "어벤져스: 엔드게임", genre: "액션" },
+    { id: 6, title: "범죄도시", genre: "액션" },
+    { id: 7, title: "타이타닉", genre: "로맨스" },
+    { id: 8, title: "토이 스토리", genre: "애니메이션" }
+  ];
+
+  // 각 영화가 어느 칸에 있는지 (페이지를 닫으면 사라짐)
+  const placement = {};
+  movies.forEach(m => { placement[m.id] = "none"; });
+
+  const board = document.getElementById("board");
+  const menu = document.getElementById("menu");
+  const menuTitle = document.getElementById("menuTitle");
+  let selectedId = null;
+
+  function render() {
+    board.querySelectorAll(".row").forEach(row => {
+      const tier = row.dataset.tier;
+      const box = row.querySelector(".cards");
+      box.innerHTML = "";
+      const list = movies.filter(m => placement[m.id] === tier);
+      if (list.length === 0) {
+        const empty = document.createElement("span");
+        empty.className = "empty";
+        empty.textContent = tier === "none" ? "모든 영화를 나눴어요!" : "아직 없음";
+        box.appendChild(empty);
+      }
+      list.forEach(m => {
+        const card = document.createElement("button");
+        card.className = "card " + GENRE_CLASS[m.genre];
+        card.dataset.id = m.id;
+        card.setAttribute("aria-haspopup", "menu");
+        card.innerHTML =
+          '<span class="card-title"></span><span class="card-genre"></span>';
+        card.querySelector(".card-title").textContent = m.title;
+        card.querySelector(".card-genre").textContent = m.genre;
+        if (m.id === selectedId) card.classList.add("selected");
+        card.addEventListener("click", e => {
+          e.stopPropagation();
+          openMenu(m.id, card);
+        });
+        box.appendChild(card);
+      });
+    });
+  }
+
+  function openMenu(id, card) {
+    if (selectedId === id && menu.classList.contains("open")) {
+      closeMenu();
+      return;
+    }
+    selectedId = id;
+    document.querySelectorAll(".card.selected").forEach(c => c.classList.remove("selected"));
+    card.classList.add("selected");
+
+    const movie = movies.find(m => m.id === id);
+    menuTitle.textContent = movie.title;
+    const current = placement[id];
+    menu.querySelectorAll("button").forEach(b => {
+      b.disabled = b.dataset.move === current;
+    });
+
+    menu.classList.add("open");
+    const r = card.getBoundingClientRect();
+    const mw = menu.offsetWidth;
+    const mh = menu.offsetHeight;
+    let left = r.left + window.scrollX;
+    let top = r.bottom + window.scrollY + 6;
+    if (left + mw > window.scrollX + document.documentElement.clientWidth - 8) {
+      left = window.scrollX + document.documentElement.clientWidth - mw - 8;
+    }
+    if (r.bottom + mh + 6 > window.innerHeight && r.top - mh - 6 > 0) {
+      top = r.top + window.scrollY - mh - 6;
+    }
+    menu.style.left = left + "px";
+    menu.style.top = top + "px";
+    const first = menu.querySelector("button:not(:disabled)");
+    if (first) first.focus();
+  }
+
+  function closeMenu() {
+    menu.classList.remove("open");
+    const prev = selectedId;
+    selectedId = null;
+    document.querySelectorAll(".card.selected").forEach(c => c.classList.remove("selected"));
+    return prev;
+  }
+
+  menu.addEventListener("click", e => {
+    e.stopPropagation();
+    const btn = e.target.closest("button[data-move]");
+    if (!btn || btn.disabled) return;
+    const id = selectedId;
+    placement[id] = btn.dataset.move;
+    closeMenu();
+    render();
+    const moved = board.querySelector('.card[data-id="' + id + '"]');
+    if (moved) moved.focus();
+  });
+
+  document.addEventListener("click", () => {
+    if (menu.classList.contains("open")) closeMenu();
+  });
+
+  document.addEventListener("keydown", e => {
+    if (e.key === "Escape" && menu.classList.contains("open")) {
+      const id = closeMenu();
+      const card = board.querySelector('.card[data-id="' + id + '"]');
+      if (card) card.focus();
+    }
+  });
+
+  window.addEventListener("resize", () => {
+    if (menu.classList.contains("open")) closeMenu();
+  });
+
+  render();
+</script>
+</body>
+</html>
